@@ -1,0 +1,77 @@
+{
+    "teams": [
+        {
+            "name": "FC Augsburg",
+            "abbr": "FCA"
+        },
+        {
+            "name": "1. FC Union Berlin",
+            "abbr": "Union"
+        },
+        {
+            "name": "Hertha BSC",
+            "abbr": "Herth"
+        },
+        {
+            "name": "Arminia Bielefeld",
+            "abbr": "ArmB"
+        },
+        {
+            "name": "Werder Bremen",
+            "abbr": "SVW"
+        },
+        {
+            "name": "Borussia Dortmund",
+            "abbr": "BVB"
+        },
+        {
+            "name": "Eintracht Frankfurt",
+            "abbr": "SGE"
+        },
+        {
+            "name": "SC Freiburg",
+            "abbr": "Frei"
+        },
+        {
+            "name": "1899 Hoffenheim",
+            "abbr": "Hoff"
+        },
+        {
+            "name": "1. FC Köln",
+            "abbr": "Köln"
+        },
+        {
+            "name": "RB Leipzig",
+            "abbr": "Leip"
+        },
+        {
+            "name": "Bayer 04 Leverkusen",
+            "abbr": "Lev"
+        },
+        {
+            "name": "FSV Mainz 05",
+            "abbr": "M05"
+        },
+        {
+            "name": "Bor. Mönchengladbach",
+            "abbr": "BMG"
+        },
+        {
+            "name": "FC Bayern München",
+            "abbr": "FCB"
+        },
+        {
+            "name": "FC Schalke 04",
+            "abbr": "S04"
+        },
+        {
+            "name": "VfB Stuttgart",
+            "abbr": "Stgt"
+        },
+        {
+            "name": "VfL Wolfsburg",
+            "abbr": "Wolf"
+        }
+    ],
+    "version": 1
+}
