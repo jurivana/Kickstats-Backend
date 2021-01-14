@@ -1,6 +1,8 @@
 from sys import version
 import json
 import requests
+from bs4 import BeautifulSoup
+import sqlite3
 
 from django.shortcuts import render
 from django.http import HttpResponse
@@ -26,4 +28,14 @@ def index(request):
 
     resp = requests.get(url)
 
-    return HttpResponse('Hello, world.')
+    soup = BeautifulSoup(resp.text, 'html.parser')
+
+    curr_gd = int(soup.find('div', {'class': 'prevnextTitle'}).find('a').string.split('.')[0])
+    
+    for user in soup.findAll('div', {'class': 'mg_name'}):
+        try:
+            User.objects.create(name=user.string)
+        except Exception:
+            pass
+
+    return HttpResponse(resp.status_code)
