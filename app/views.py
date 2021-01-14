@@ -5,15 +5,14 @@ from bs4 import BeautifulSoup
 import sqlite3
 
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import JsonResponse
 
 from .models import Team, User, Game, Prediction, Meta
-
 
 url = 'https://www.kicktipp.de/ezpzplus/tippuebersicht'
 url_gd = 'https://www.kicktipp.de/ezpzplus/tippuebersicht?&spieltagIndex={gd}'
 
-def index(request):
+def update_db(request):
     meta = Meta.objects.first()
     if not meta:
         meta = Meta.objects.create(version=0)
@@ -38,4 +37,4 @@ def index(request):
         except Exception:
             pass
 
-    return HttpResponse(resp.status_code)
+    return JsonResponse(resp.status_code)
