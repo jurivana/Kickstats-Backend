@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 class Team(models.Model):
     name = models.CharField(max_length=32, unique=True)
@@ -21,7 +22,7 @@ class Prediction(models.Model):
     score_away = models.IntegerField(null=True)
     points = models.IntegerField()
 
-class TeamStats(models.Model):
+class Stats(models.Model):
     TOTAL = 't'
     HOME = 'h'
     AWAY = 'a'
@@ -39,8 +40,14 @@ class TeamStats(models.Model):
     goals = models.IntegerField(default=0)
     goals_against = models.IntegerField(default=0)
     points = models.IntegerField(default=0)
+    user_points = models.IntegerField(default=0)
+    four_points = models.IntegerField(default=0)
+    three_points = models.IntegerField(default=0)
+    two_points = models.IntegerField(default=0)
+    zero_points = models.IntegerField(default=0)
 
 class Meta(models.Model):
     version = models.IntegerField(default=0)
     curr_gd = models.IntegerField(default=1)
+    last_updated = models.DateTimeField(default=timezone.now)
   
