@@ -27,34 +27,34 @@ def get_users(request):
 
     return JsonResponse(response)
 
-def get_table(request, username=None):
+def get_table(request, username):
     response = {
-        'total': [],
-        'home': [],
-        'away': [],
-        'user': username
+        'user': {
+            'total': [],
+            'home': [],
+            'away': []
+        },
+        'real': {
+            'total': [],
+            'home': [],
+            'away': []
+        }
     }
-    user = User.objects.get(name=username) if username else None
+    user = User.objects.get(name=username)
     for type in Stats.TYPE_CHOICES:
-        stats = Stats.objects.filter(type=type[0], user=user).order_by('-points', -(F('goals') - F('goals_against')), '-goals')
-        print(f'\n\n # Name                  G  S  U  N  T GT  TD  P')
-        for idx, stat in enumerate(stats):
+        real_stats = Stats.objects.filter(type=type[0], user=None).order_by('-points', -(F('goals') - F('goals_against')), '-goals')
+        real_ranks = {}
+        for idx, stat in enumerate(real_stats):
             rank = idx + 1
-            print(
-                f'{rank:2} {stat.team.name:20} {stat.wins + stat.draws + stat.losses:2} {stat.wins:2} {stat.draws:2} {stat.losses:2} {stat.goals:2} {stat.goals_against:2} {stat.goals-stat.goals_against:3} {stat.points:2}'
-            )
-            response[type[1]].append({
-                'rank': rank,
-                'team': stat.team.name,
-                'games': stat.wins + stat.draws + stat.losses,
-                'wins': stat.wins,
-                'draws': stat.draws,
-                'losses': stat.losses,
-                'goals': stat.goals,
-                'goals_against': stat.goals_against,
-                'diff': stat.goals - stat.goals_against,
-                'points': stat.points
-            })
+            real_ranks[stat.team.name] = rank
+            response['real'][type[1]].append(__create_table_json(rank, stat))
+
+        user_stats = Stats.objects.filter(type=type[0], user=user).order_by('-points', -(F('goals') - F('goals_against')), '-goals')
+        for user_idx, user_stat in enumerate(user_stats):
+            user_rank = user_idx + 1
+            rank_diff = real_ranks[user_stat.team.name] - user_rank
+            response['user'][type[1]].append(__create_table_json(user_rank, user_stat, rank_diff))
+
     return JsonResponse(response)
 
 def get_points(request, username):
@@ -223,7 +223,7 @@ def __update_stats(home_team, away_team, score_home, score_away, user=None, user
         away_stats_total.points += 3
         away_stats_away.points += 3
 
-    if user_points:
+    if user is not None:
         home_stats_total.user_points += user_points
         home_stats_home.user_points += user_points
         away_stats_total.user_points += user_points
@@ -254,3 +254,28 @@ def __update_stats(home_team, away_team, score_home, score_away, user=None, user
     home_stats_home.save() 
     away_stats_total.save()
     away_stats_away.save()
+
+def __create_table_json(rank, stat, rank_diff=None):
+    rank_diff_icon = ''
+    if (rank_diff is not None):
+        if (rank_diff < 0):
+            rank_diff_icon = 'arrow_drop_down'
+            rank_diff = -rank_diff
+        elif (rank_diff > 0):
+            rank_diff_icon = 'arrow_drop_up'
+        else:
+            rank_diff_icon = 'arrow_right'
+    return {
+        'rank': rank,
+        'rank_diff': rank_diff,
+        'rank_diff_icon': rank_diff_icon,
+        'team': stat.team.name,
+        'games': stat.wins + stat.draws + stat.losses,
+        'wins': stat.wins,
+        'draws': stat.draws,
+        'losses': stat.losses,
+        'goals': stat.goals,
+        'goals_against': stat.goals_against,
+        'diff': stat.goals - stat.goals_against,
+        'points': stat.points
+    }
