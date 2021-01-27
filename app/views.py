@@ -12,8 +12,8 @@ from .models import Team, Stats, User, Game, Prediction, Meta
 def get_meta(request):
     response = {}
     meta = Meta.objects.get_or_create()[0]
-    response['last_updated'] = meta.last_updated
-    response['curr_gd'] = meta.curr_gd
+    response['last_updated'] = timezone.localtime(meta.last_updated).strftime('%d.%m.%y %H:%M:%S')
+    response['curr_gd'] = meta.curr_gd - 1
 
     return JsonResponse(response)
 
@@ -82,10 +82,54 @@ def get_points(request, username):
 
     return JsonResponse(response)
 
-def get_last_updated(request):
+def get_highlights(request):
+    highlights_user = {}
+    highlights_user_cats = ['most_overrated', 'most_underrated', 'goals_per_game', 'most_four_points', 'most_points', 'fewest_points']
+    for hl in highlights_user_cats:
+        highlights_user[hl] = []
+    for user in User.objects.all():
+        hls = __get_highlights_user_json(user)
+        for hl in highlights_user_cats:
+            for entry in hls[hl]:
+                highlights_user[hl].append([user.name] + [entry])
+    for hl in highlights_user_cats:
+        highlights_user[hl] = sorted(highlights_user[hl], key=lambda x: hasattr(x[1], '__getitem__') and x[1][1] or x[1], reverse=True)
+
+    points_total = []
+    for team in Team.objects.all():
+        stats = Stats.objects.filter(team=team, type=Stats.TOTAL)
+        points_total.append([team.name, sum([stat.user_points for stat in stats])])
+    points_total = sorted(points_total, key=lambda x: x[1])
+
     return JsonResponse({
-        'last_updated': Meta.objects.first().last_updated or 'never'
+        'most_four_points': highlights_user['most_four_points'][:3],
+        'most_points': highlights_user['most_points'][:3],
+        'fewest_points': sorted(highlights_user['fewest_points'][-3:], key=lambda x: x[1][1]),
+        'most_overrated': highlights_user['most_overrated'][:3],
+        'most_underrated': highlights_user['most_underrated'][:3],
+        'most_goals': highlights_user['goals_per_game'][:3],
+        'fewest_goals': sorted(highlights_user['goals_per_game'][-3:], key=lambda x: x[1]),
+        'most_points_total': [[None, data] for data in points_total[-3:][::-1]],
+        'fewest_points_total': [[None, data] for data in points_total[:3]]
     })
+
+def get_highlights_user(request, username):
+    user = User.objects.get(name=username)
+    return JsonResponse(__get_highlights_user_json(user))
+
+def __get_highlights_user_json(user):
+    stats = Stats.objects.filter(user=user, type=Stats.TOTAL)
+
+    table = Stats.objects.filter(user=None, type=Stats.TOTAL)
+    point_diff = [[real_stat.team.name, real_stat.points - user_stat.points] for (real_stat, user_stat) in zip(list(table.order_by('team')), list(stats.order_by('team')))]
+    return {
+        'most_four_points': [[stat.team.name, stat.four_points] for stat in list(stats.order_by('-four_points')[:3])],
+        'most_points': [[stat.team.name, stat.user_points] for stat in list(stats.order_by('-user_points')[:3])],
+        'fewest_points': [[stat.team.name, stat.user_points] for stat in list(stats.order_by('user_points')[:3])],
+        'most_overrated': [[x[0], -x[1]] for x in sorted(point_diff, key=lambda x: x[1])[:3]],
+        'most_underrated': sorted(point_diff, key=lambda x: -x[1])[:3],
+        'goals_per_game': [[None, user.goals / user.preds]]
+    }
 
 def update_db(request):
     url = 'https://www.kicktipp.de/ezpzplus/tippuebersicht'
@@ -125,7 +169,7 @@ def update_db(request):
         meta.curr_gd = curr_gd
         meta.save()
 
-    meta.last_updated = (timezone.now())
+    meta.last_updated = timezone.now()
     meta.save()
 
     return HttpResponse(status=204)
@@ -170,7 +214,7 @@ def extract_ranking(gd, ranking):
                 score_home = int(score[0])
                 score_away = int(score[1])
             except TypeError:
-                score_home = score_away = None
+                continue
             user_obj = User.objects.get(name=name)
             game = game_objects[game_idx]
 
@@ -181,8 +225,12 @@ def extract_ranking(gd, ranking):
                 score_away=score_away,
                 points=points
             )
-            if score_home is not None:
-                __update_stats(game.home, game.away, score_home, score_away, user_obj, points)
+
+            user_obj.preds += 1
+            user_obj.goals += score_home + score_away
+            user_obj.save()
+
+            __update_stats(game.home, game.away, score_home, score_away, user_obj, points)
 
 def __update_stats(home_team, away_team, score_home, score_away, user=None, user_points=None):
     home_stats_total = Stats.objects.get_or_create(team=home_team, user=user, type=Stats.TOTAL)[0]

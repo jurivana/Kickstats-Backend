@@ -7,6 +7,8 @@ class Team(models.Model):
 
 class User(models.Model):
     name = models.CharField(max_length=32, unique=True)
+    preds = models.IntegerField(default=0)
+    goals = models.IntegerField(default=0)
 
 class Game(models.Model):
     home = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='home_game_set')
