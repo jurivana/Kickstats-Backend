@@ -12,7 +12,7 @@ from .models import Team, Stats, User, Game, Prediction, Meta
 def get_meta(request):
     response = {}
     meta = Meta.objects.get_or_create()[0]
-    response['last_updated'] = timezone.localtime(meta.last_updated).strftime('%d.%m.%y %H:%M:%S')
+    response['last_updated'] = timezone.localtime(meta.last_updated).strftime('%d.%m.%y %H:%M')
     response['curr_gd'] = meta.curr_gd - 1
 
     return JsonResponse(response)
