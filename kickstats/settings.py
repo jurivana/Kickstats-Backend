@@ -52,7 +52,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200"
+    "http://kickstats.herokuapp.com"
 ]
 
 ROOT_URLCONF = 'kickstats.urls'
