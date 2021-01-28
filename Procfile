@@ -1,1 +1,1 @@
-web: waitress-serve kickstats.wsgi:application
+web: gunicorn kickstats.wsgi
