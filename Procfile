@@ -1,0 +1,1 @@
+web: waitress-serve kickstats.wsgi:application
