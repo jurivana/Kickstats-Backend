@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'r^c183(mkp&*4n)+hj26!dmyf^a%g9@*89_b1o(_gy@)ve=e+h'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['kickstatsapi.herokuapp.com']
+ALLOWED_HOSTS = ['kickstatsapi.herokuapp.com', 'localhost']
 
 
 # Application definition
