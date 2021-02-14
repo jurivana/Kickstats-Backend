@@ -160,7 +160,7 @@ def update_db(request):
     # add all new games and predictions
     curr_gd = int(soup.find('div', class_='prevnextTitle').a.string.split('.')[0])
     if curr_gd > meta.curr_gd:
-        extract_ranking(curr_gd, soup.find(id='ranking'))
+        extract_ranking(curr_gd, soup.find(id='ranking'), True)
         for gd in range(meta.curr_gd, curr_gd):
             print(gd)
             resp = requests.get(url_gd.format(gd=gd))
@@ -174,9 +174,9 @@ def update_db(request):
 
     return HttpResponse(status=204)
 
-def extract_ranking(gd, ranking):
+def extract_ranking(gd, ranking, checkFinished=False):
     games = ranking.find_all('th', class_='ereignis')
-    if games[8].find('span', class_='kicktipp-heim').string == '-':  # TODO check if finished
+    if checkFinished and games[8].find('span', class_='kicktipp-heim').string == '-':  # TODO check if finished
         return
 
     game_objects = []
@@ -185,8 +185,11 @@ def extract_ranking(gd, ranking):
         away = home.find_next()
         home_team = Team.objects.get(abbr=home.string)
         away_team = Team.objects.get(abbr=away.string)
-        score_home = int(game.find('span', class_='kicktipp-heim').string)
-        score_away = int(game.find('span', class_='kicktipp-gast').string)
+        try:
+            score_home = int(game.find('span', class_='kicktipp-heim').string)
+            score_away = int(game.find('span', class_='kicktipp-gast').string)
+        except ValueError:
+            continue
 
         game_objects.append(Game.objects.create(
             home=home_team, 
@@ -213,7 +216,7 @@ def extract_ranking(gd, ranking):
             try:
                 score_home = int(score[0])
                 score_away = int(score[1])
-            except TypeError:
+            except (TypeError, ValueError):
                 continue
             user_obj = User.objects.get(name=name)
             game = game_objects[game_idx]
