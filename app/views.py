@@ -13,7 +13,7 @@ def get_meta(request):
     response = {}
     meta = Meta.objects.get_or_create()[0]
     response['last_updated'] = timezone.localtime(meta.last_updated).strftime('%d.%m.%y %H:%M')
-    response['curr_gd'] = meta.curr_gd - 1
+    response['curr_gd'] = meta.curr_gd
 
     return JsonResponse(response)
 
@@ -160,13 +160,11 @@ def update_db(request):
     # add all new games and predictions
     curr_gd = int(soup.find('div', class_='prevnextTitle').a.string.split('.')[0])
     if curr_gd > meta.curr_gd:
-        extract_ranking(curr_gd, soup.find(id='ranking'), True)
         for gd in range(meta.curr_gd, curr_gd):
-            print(gd)
             resp = requests.get(url_gd.format(gd=gd))
             soup = BeautifulSoup(resp.text, 'html.parser')
             extract_ranking(gd, soup.find(id='ranking'))
-        meta.curr_gd = curr_gd
+        meta.curr_gd = curr_gd if extract_ranking(curr_gd, soup.find(id='ranking'), True) else curr_gd - 1
         meta.save()
 
     meta.last_updated = timezone.now()
@@ -175,9 +173,10 @@ def update_db(request):
     return HttpResponse(status=204)
 
 def extract_ranking(gd, ranking, checkFinished=False):
+    print(gd)
     games = ranking.find_all('th', class_='ereignis')
     if checkFinished and games[8].find('span', class_='kicktipp-heim').string == '-':  # TODO check if finished
-        return
+        return False
 
     game_objects = []
     for game in games:
@@ -234,6 +233,7 @@ def extract_ranking(gd, ranking, checkFinished=False):
             user_obj.save()
 
             __update_stats(game.home, game.away, score_home, score_away, user_obj, points)
+    return True
 
 def __update_stats(home_team, away_team, score_home, score_away, user=None, user_points=None):
     home_stats_total = Stats.objects.get_or_create(team=home_team, user=user, type=Stats.TOTAL)[0]
