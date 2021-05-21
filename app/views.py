@@ -13,7 +13,7 @@ def get_meta(request):
     response = {}
     meta = Meta.objects.get_or_create()[0]
     response['last_updated'] = timezone.localtime(meta.last_updated).strftime('%d.%m.%y %H:%M')
-    response['curr_gd'] = meta.curr_gd
+    response['curr_gd'] = meta.curr_gd - 1
 
     return JsonResponse(response)
 
@@ -159,12 +159,13 @@ def update_db(request):
     
     # add all new games and predictions
     curr_gd = int(soup.find('div', class_='prevnextTitle').a.string.split('.')[0])
+    ranking = soup.find(id='ranking')
     if curr_gd > meta.curr_gd:
         for gd in range(meta.curr_gd, curr_gd):
             resp = requests.get(url_gd.format(gd=gd))
             soup = BeautifulSoup(resp.text, 'html.parser')
             extract_ranking(gd, soup.find(id='ranking'))
-        meta.curr_gd = curr_gd if extract_ranking(curr_gd, soup.find(id='ranking'), True) else curr_gd - 1
+        meta.curr_gd = curr_gd + 1 if extract_ranking(curr_gd, ranking, True) else curr_gd
         meta.save()
 
     meta.last_updated = timezone.now()
@@ -236,6 +237,8 @@ def extract_ranking(gd, ranking, checkFinished=False):
     return True
 
 def __update_stats(home_team, away_team, score_home, score_away, user=None, user_points=None):
+    # if not user:
+    #     print(f'{home_team.name:20} {score_home}:{score_away} {away_team.name:20}')
     home_stats_total = Stats.objects.get_or_create(team=home_team, user=user, type=Stats.TOTAL)[0]
     home_stats_home = Stats.objects.get_or_create(team=home_team, user=user, type=Stats.HOME)[0]
     away_stats_total = Stats.objects.get_or_create(team=away_team, user=user, type=Stats.TOTAL)[0]
