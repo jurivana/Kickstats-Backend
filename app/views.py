@@ -160,7 +160,7 @@ def update_db(request):
     # add all new games and predictions
     curr_gd = int(soup.find('div', class_='prevnextTitle').a.string.split('.')[0])
     ranking = soup.find(id='ranking')
-    if curr_gd > meta.curr_gd:
+    if curr_gd >= meta.curr_gd:
         for gd in range(meta.curr_gd, curr_gd):
             resp = requests.get(url_gd.format(gd=gd))
             soup = BeautifulSoup(resp.text, 'html.parser')
