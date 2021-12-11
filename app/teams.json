@@ -17,8 +17,8 @@
             "abbr": "ArmB"
         },
         {
-            "name": "Werder Bremen",
-            "abbr": "SVW"
+            "name": "SpVgg Greuther Fürth",
+            "abbr": "GrFü"
         },
         {
             "name": "Borussia Dortmund",
@@ -61,8 +61,8 @@
             "abbr": "FCB"
         },
         {
-            "name": "FC Schalke 04",
-            "abbr": "S04"
+            "name": "VfL Bochum",
+            "abbr": "Boch"
         },
         {
             "name": "VfB Stuttgart",
@@ -73,5 +73,5 @@
             "abbr": "Wolf"
         }
     ],
-    "version": 1
+    "version": 2
 }
