@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
+
 import django_heroku
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -53,8 +54,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    "https://kickstats.herokuapp.com",
-    "http://localhost:4200"
+    'http://localhost:4200',
+    'https://kickstats.jurivana.de'
 ]
 
 ROOT_URLCONF = 'kickstats.urls'
