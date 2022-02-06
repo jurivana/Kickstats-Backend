@@ -14,7 +14,7 @@ def get_meta(request):
     meta = Meta.objects.get_or_create()[0]
     response['last_started'] = timezone.localtime(meta.last_started).strftime('%d.%m.%y %H:%M')
     response['last_updated'] = timezone.localtime(meta.last_updated).strftime('%d.%m.%y %H:%M')
-    response['curr_gd'] = meta.curr_gd - 1
+    response['curr_gd'] = meta.curr_gd
 
     return JsonResponse(response)
 
@@ -145,7 +145,7 @@ def update_db(request):
     url_gd = 'https://www.kicktipp.de/ezpzplus/tippuebersicht?&spieltagIndex={gd}'
 
     meta = Meta.objects.get_or_create()[0]
-    if (timezone.now() - meta.last_started).seconds < 0:
+    if (timezone.now() - meta.last_started).seconds < 60:
         return HttpResponse(status=200)
     meta.last_started = timezone.now()
     meta.save()
