@@ -1,21 +1,23 @@
 import json
+
 import requests
 from bs4 import BeautifulSoup
-
-from django.http import JsonResponse, HttpResponse
 from django.db.models import F
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 
-from .models import Team, Stats, User, Game, Prediction, Meta
+from .models import Game, Meta, Prediction, Stats, Team, User
 
 
 def get_meta(request):
     response = {}
     meta = Meta.objects.get_or_create()[0]
+    response['last_started'] = timezone.localtime(meta.last_started).strftime('%d.%m.%y %H:%M')
     response['last_updated'] = timezone.localtime(meta.last_updated).strftime('%d.%m.%y %H:%M')
     response['curr_gd'] = meta.curr_gd - 1
 
     return JsonResponse(response)
+
 
 def get_users(request):
     response = {
@@ -26,6 +28,7 @@ def get_users(request):
         response['users'].append(user.name)
 
     return JsonResponse(response)
+
 
 def get_table(request, username):
     response = {
@@ -57,6 +60,7 @@ def get_table(request, username):
 
     return JsonResponse(response)
 
+
 def get_points(request, username):
     response = {
         'total': [],
@@ -81,6 +85,7 @@ def get_points(request, username):
             })
 
     return JsonResponse(response)
+
 
 def get_highlights(request):
     highlights_user = {}
@@ -113,15 +118,18 @@ def get_highlights(request):
         'fewest_points_total': [[None, data] for data in points_total[:3]]
     })
 
+
 def get_highlights_user(request, username):
     user = User.objects.get(name=username)
     return JsonResponse(__get_highlights_user_json(user))
+
 
 def __get_highlights_user_json(user):
     stats = Stats.objects.filter(user=user, type=Stats.TOTAL)
 
     table = Stats.objects.filter(user=None, type=Stats.TOTAL)
-    point_diff = [[real_stat.team.name, real_stat.points - user_stat.points] for (real_stat, user_stat) in zip(list(table.order_by('team')), list(stats.order_by('team')))]
+    point_diff = [[real_stat.team.name, real_stat.points - user_stat.points]
+                  for (real_stat, user_stat) in zip(list(table.order_by('team')), list(stats.order_by('team')))]
     return {
         'most_four_points': [[stat.team.name, stat.four_points] for stat in list(stats.order_by('-four_points')[:3])],
         'most_points': [[stat.team.name, stat.user_points] for stat in list(stats.order_by('-user_points')[:3])],
@@ -131,12 +139,17 @@ def __get_highlights_user_json(user):
         'goals_per_game': [[None, user.goals / user.preds]]
     }
 
+
 def update_db(request):
     url = 'https://www.kicktipp.de/ezpzplus/tippuebersicht'
     url_gd = 'https://www.kicktipp.de/ezpzplus/tippuebersicht?&spieltagIndex={gd}'
-    
+
     meta = Meta.objects.get_or_create()[0]
-    
+    if (timezone.now() - meta.last_started).seconds < 0:
+        return HttpResponse(status=200)
+    meta.last_started = timezone.now()
+    meta.save()
+
     # create teams
     with open('app/teams.json', encoding='utf-8') as teams_file:
         teams = json.load(teams_file)
@@ -149,14 +162,14 @@ def update_db(request):
 
     resp = requests.get(url)
     soup = BeautifulSoup(resp.text, 'html.parser')
-    
+
     # create users
     users = soup.findAll('div', class_='mg_name')
     if len(users) > User.objects.count():
         User.objects.all().delete()
         for user in users:
             User.objects.create(name=user.string)
-    
+
     # add all new games and predictions
     curr_gd = int(soup.find('div', class_='prevnextTitle').a.string.split('.')[0])
     if curr_gd > meta.curr_gd:
@@ -173,6 +186,7 @@ def update_db(request):
     meta.save()
 
     return HttpResponse(status=204)
+
 
 def extract_ranking(gd, ranking, checkFinished=False):
     games = ranking.find_all('th', class_='ereignis')
@@ -192,15 +206,14 @@ def extract_ranking(gd, ranking, checkFinished=False):
             continue
 
         game_objects.append(Game.objects.create(
-            home=home_team, 
+            home=home_team,
             away=away_team,
             score_home=score_home,
             score_away=score_away,
             gameday=gd
         ))
         __update_stats(home_team, away_team, score_home, score_away)
-        
-    
+
     users = ranking.find_all('tr', class_='teilnehmer')
     for user in users:
         name = user.find('div', class_='mg_name').string
@@ -212,7 +225,7 @@ def extract_ranking(gd, ranking, checkFinished=False):
             else:
                 score = pred.string.split(':') if pred.string else (None, None)
                 points = 0
-            
+
             try:
                 score_home = int(score[0])
                 score_away = int(score[1])
@@ -234,6 +247,7 @@ def extract_ranking(gd, ranking, checkFinished=False):
             user_obj.save()
 
             __update_stats(game.home, game.away, score_home, score_away, user_obj, points)
+
 
 def __update_stats(home_team, away_team, score_home, score_away, user=None, user_points=None):
     home_stats_total = Stats.objects.get_or_create(team=home_team, user=user, type=Stats.TOTAL)[0]
@@ -279,7 +293,7 @@ def __update_stats(home_team, away_team, score_home, score_away, user=None, user
         home_stats_home.user_points += user_points
         away_stats_total.user_points += user_points
         away_stats_away.user_points += user_points
-        
+
         if user_points == 4:
             home_stats_total.four_points += 1
             home_stats_home.four_points += 1
@@ -302,9 +316,10 @@ def __update_stats(home_team, away_team, score_home, score_away, user=None, user
             away_stats_away.zero_points += 1
 
     home_stats_total.save()
-    home_stats_home.save() 
+    home_stats_home.save()
     away_stats_total.save()
     away_stats_away.save()
+
 
 def __create_table_json(rank, stat, rank_diff=None):
     rank_diff_icon = ''
