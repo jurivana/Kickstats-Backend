@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'r^c183(mkp&*4n)+hj26!dmyf^a%g9@*89_b1o(_gy@)ve=e+h'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -52,7 +52,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:4200',
+    'https://kickstats.jurivana.de'
 ]
 
 ROOT_URLCONF = 'kickstats.urls'
@@ -81,8 +81,11 @@ WSGI_APPLICATION = 'kickstats.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': 'surus.db.elephantsql.com',
+        'NAME': 'pwhpekah',
+        'USER': 'pwhpekah',
+        'PASSWORD': 'hFat2sXYCgN5OG3qpUvXFjboqPLzt2fl'
     }
 }
 

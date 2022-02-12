@@ -6,7 +6,7 @@ from django.db.models import F
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 
-from .models import Game, Meta, Prediction, Stats, Team, User
+from .models import Cache, Game, Meta, Prediction, Stats, Team, User
 
 
 def get_meta(request):
@@ -31,6 +31,12 @@ def get_users(request):
 
 
 def get_table(request, username):
+    user = User.objects.get(name=username)
+    cache = Cache.objects.get_or_create(request='table', user=user)[0]
+    meta = Meta.objects.get_or_create()[0]
+    if cache.gd == meta.curr_gd:
+        return JsonResponse(cache.response, safe=False)
+
     response = {
         'user': {
             'total': [],
@@ -43,7 +49,6 @@ def get_table(request, username):
             'away': []
         }
     }
-    user = User.objects.get(name=username)
     for type in Stats.TYPE_CHOICES:
         real_stats = Stats.objects.filter(type=type[0], user=None).order_by('-points', -(F('goals') - F('goals_against')), '-goals')
         real_ranks = {}
@@ -58,17 +63,26 @@ def get_table(request, username):
             rank_diff = real_ranks[user_stat.team.name] - user_rank
             response['user'][type[1]].append(__create_table_json(user_rank, user_stat, rank_diff))
 
+    cache.response = response
+    cache.gd = meta.curr_gd
+    cache.save()
+
     return JsonResponse(response)
 
 
 def get_points(request, username):
+    user = User.objects.get(name=username)
+    cache = Cache.objects.get_or_create(request='points', user=user)[0]
+    meta = Meta.objects.get_or_create()[0]
+    if cache.gd == meta.curr_gd:
+        return JsonResponse(cache.response, safe=False)
+
     response = {
         'total': [],
         'home': [],
         'away': [],
         'user': username
     }
-    user = User.objects.get(name=username)
     for type in Stats.TYPE_CHOICES:
         stats = Stats.objects.filter(type=type[0], user=user).order_by('-user_points')
 
@@ -83,11 +97,19 @@ def get_points(request, username):
                 'two_points': stat.two_points,
                 'zero_points': stat.zero_points
             })
+    cache.response = response
+    cache.gd = meta.curr_gd
+    cache.save()
 
     return JsonResponse(response)
 
 
 def get_highlights(request):
+    cache = Cache.objects.get_or_create(request='highlights', user=None)[0]
+    meta = Meta.objects.get_or_create()[0]
+    if cache.gd == meta.curr_gd:
+        return JsonResponse(cache.response, safe=False)
+
     highlights_user = {}
     highlights_user_cats = ['most_overrated', 'most_underrated', 'goals_per_game', 'most_four_points', 'most_points', 'fewest_points']
     for hl in highlights_user_cats:
@@ -106,7 +128,7 @@ def get_highlights(request):
         points_total.append([team.name, sum([stat.user_points for stat in stats])])
     points_total = sorted(points_total, key=lambda x: x[1])
 
-    return JsonResponse({
+    response = {
         'most_four_points': highlights_user['most_four_points'][:3],
         'most_points': highlights_user['most_points'][:3],
         'fewest_points': sorted(highlights_user['fewest_points'][-3:], key=lambda x: x[1][1]),
@@ -116,12 +138,27 @@ def get_highlights(request):
         'fewest_goals': sorted(highlights_user['goals_per_game'][-3:], key=lambda x: x[1]),
         'most_points_total': [[None, data] for data in points_total[-3:][::-1]],
         'fewest_points_total': [[None, data] for data in points_total[:3]]
-    })
+    }
+    cache.response = response
+    cache.gd = meta.curr_gd
+    cache.save()
+
+    return JsonResponse(response)
 
 
 def get_highlights_user(request, username):
     user = User.objects.get(name=username)
-    return JsonResponse(__get_highlights_user_json(user))
+    cache = Cache.objects.get_or_create(request='highlights', user=user)[0]
+    meta = Meta.objects.get_or_create()[0]
+    if cache.gd == meta.curr_gd:
+        return JsonResponse(cache.response, safe=False)
+
+    response = __get_highlights_user_json(user)
+    cache.response = response
+    cache.gd = meta.curr_gd
+    cache.save()
+
+    return JsonResponse(response)
 
 
 def __get_highlights_user_json(user):
@@ -173,13 +210,13 @@ def update_db(request):
     # add all new games and predictions
     curr_gd = int(soup.find('div', class_='prevnextTitle').a.string.split('.')[0])
     if curr_gd > meta.curr_gd:
-        extract_ranking(curr_gd, soup.find(id='ranking'), True)
-        for gd in range(meta.curr_gd, curr_gd):
+        gd_finished = extract_ranking(curr_gd, soup.find(id='ranking'), True)
+        for gd in range(meta.curr_gd + 1, curr_gd):
             print(gd)
             resp = requests.get(url_gd.format(gd=gd))
             soup = BeautifulSoup(resp.text, 'html.parser')
             extract_ranking(gd, soup.find(id='ranking'))
-        meta.curr_gd = curr_gd
+        meta.curr_gd = curr_gd if gd_finished else curr_gd - 1
         meta.save()
 
     meta.last_updated = timezone.now()
@@ -190,8 +227,8 @@ def update_db(request):
 
 def extract_ranking(gd, ranking, checkFinished=False):
     games = ranking.find_all('th', class_='ereignis')
-    if checkFinished and games[8].find('span', class_='kicktipp-heim').string == '-':  # TODO check if finished
-        return
+    if checkFinished and (games[8].find('span', class_='kicktipp-heim').string == '-' or games[8].find('span', class_='kicktipp-liveergebnis')):
+        return False
 
     game_objects = []
     for game in games:
@@ -247,6 +284,7 @@ def extract_ranking(gd, ranking, checkFinished=False):
             user_obj.save()
 
             __update_stats(game.home, game.away, score_home, score_away, user_obj, points)
+    return True
 
 
 def __update_stats(home_team, away_team, score_home, score_away, user=None, user_points=None):

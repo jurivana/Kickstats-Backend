@@ -56,6 +56,22 @@ class Stats(models.Model):
 
 class Meta(models.Model):
     version = models.IntegerField(default=0)
-    curr_gd = models.IntegerField(default=1)
+    curr_gd = models.IntegerField(default=0)
     last_updated = models.DateTimeField(default=timezone.now)
     last_started = models.DateTimeField(default=timezone.now)
+
+
+class Cache(models.Model):
+    REQUEST_CHOICES = [
+        ('table', 'Tabelle'),
+        ('points', 'Punkte'),
+        ('highlights', 'Highlights')
+    ]
+
+    request = models.CharField(max_length=16, choices=REQUEST_CHOICES)
+    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
+    gd = models.IntegerField(default=0)
+    response = models.JSONField(null=True)
+
+    class Meta:
+        unique_together = ('request', 'user')

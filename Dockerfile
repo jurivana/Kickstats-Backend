@@ -6,6 +6,9 @@ FROM python:3.7-slim
 ENV PYTHONDONTWRITEBYTECODE True
 ENV PYTHONUNBUFFERED True
 
+# Set production settings
+ENV DJANGO_SETTINGS_MODULE kickstats.settings_prod
+
 # Copy local code to the container image.
 ENV APP_HOME /app
 WORKDIR $APP_HOME
@@ -17,6 +20,7 @@ RUN apt-get -y install libpq-dev gcc
 
 # Install production dependencies.
 RUN pip install -r requirements.txt
+RUN python manage.py migrate
 
 # Run the web service on container startup. Here we use the gunicorn
 # webserver, with one worker process and 8 threads.
